@@ -129,16 +129,16 @@ class PathDescriber
                 $link_tag = $link_tags[0];
                 if ($link_tag instanceof InvalidTag) {
                     $this->generator->notice('Tag "' . (string)$link_tag . '" of "'
-                     . $pathOperation->path . '" is invalid: '.$link_tag->getException()->getMessage(),
-                     ErrorableObject::NOTICE_ERROR);
+                        . $pathOperation->path . '" is invalid: '.$link_tag->getException()->getMessage(),
+                        ErrorableObject::NOTICE_ERROR);
                 } else {
                     $pathOperation->externalDocs = new ExternalDocumentation([
                         'url' => $link_tags[0]->getLink(),
-                         'description' => (!empty(
-                         $link_tags[0]->getDescription()
-                         ) ? (string)$link_tags[0]->getDescription(
-                         ) : ''),
-                     ]);
+                        'description' => (!empty(
+                        $link_tags[0]->getDescription()
+                        ) ? (string)$link_tags[0]->getDescription(
+                        ) : ''),
+                    ]);
                 }
             }
         }
@@ -170,8 +170,8 @@ class PathDescriber
 
             if ($return_block instanceof InvalidTag) {
                 $this->generator->onInvalidTag($return_block,
-                                               $actionReflection->getDeclaringClass()->getName()
-                                               .':'.$actionReflection->getName().'()'
+                    $actionReflection->getDeclaringClass()->getName()
+                    .':'.$actionReflection->getName().'()'
                 );
                 return null;
             }
@@ -199,7 +199,7 @@ class PathDescriber
      */
     public function generatePathMethodResponseFromType(
         ReflectionMethod $actionReflection,
-        $type,
+                         $type,
         ?PathResultWrapper $pathResultWrapper
     )
     {
@@ -447,11 +447,12 @@ class PathDescriber
             }
         }
 
-        $parameters = [];
+        $parameters = $parameters_names = [];
         $required = [];
 
         // Generation @OA\Parameter's
         // php arguments
+        // изменил условия так чтобы он мог получать парамы и через аргументы и через phpdoc
         if ($actionReflection->getNumberOfParameters() > 0) {
             foreach ($actionReflection->getParameters() as $parameter) {
                 $parameter_type_kind = $this->generator->getTypeDescriber()->getKindForType($parameter->getDeclaringClass()->getName(),
@@ -481,18 +482,40 @@ class PathDescriber
                 }
 
 
+                //получаем параметры которые есть в аргументах
                 $parameter_annotation = $this->generateSchemaForParameter(
-                    $parameter,
+                    $parameter ?? null,
                     $doc_block_parameters[$parameter->getName()] ?? null,
                     $parameters_formats[$parameter->getName()] ?? null,
                     $parameters_enums[$parameter->getName()] ?? null,
                     $parameters_examples[$parameter->getName()] ?? null,
+                    $actionReflection
+                );
+
+                if (isset($parameter_annotation)) {
+                    $parameters[] = $parameter_annotation;
+                    $parameters_names[] = $parameter_annotation->name;
+                }
+            }
+        }
+
+        //получаем параметры которые есть только в phpdoc
+        foreach ($doc_block_parameters as $doc_block_parameter){
+            if (!in_array($doc_block_parameter->getVariableName(), $parameters_names) ){
+                $parameter_annotation = $this->generateSchemaForParameter(
+                    null,
+                    $doc_block_parameters[$doc_block_parameter->getVariableName()] ?? null,
+                    $parameters_formats[$doc_block_parameter->getVariableName()] ?? null,
+                    $parameters_enums[$doc_block_parameter->getVariableName()] ?? null,
+                    $parameters_examples[$doc_block_parameter->getVariableName()] ?? null,
+                    $actionReflection
                 );
 
                 if (isset($parameter_annotation)) {
                     $parameters[] = $parameter_annotation;
                 }
             }
+
         }
 
         return $parameters;
@@ -563,49 +586,18 @@ class PathDescriber
      * @throws ReflectionException
      */
     public function generateSchemaForParameter(
-        ReflectionParameter $pathParameter,
+        ?ReflectionParameter $pathParameter = null,
         ?Param $docBlockParameter = null,
         ?string $format = null,
         ?array $enum = null,
-        ?array $examples = null
+        ?array $examples = null,
+        ReflectionMethod $action_reflection
     ): ?Parameter
     {
+        // добавил возможность генерации схемы без $pathParameter (в случае если есть phpdoc но нет в аргументах)
         $is_nullable_parameter = $is_required_parameter = false;
-
-        $location = $pathParameter->getDeclaringClass()->getName().'::'.$pathParameter->getDeclaringFunction()->getName();
-
-        if ($docBlockParameter === null) {
-            $this->generator->notice('Param "'.$pathParameter->getName().'" of "' . $location
-                                     .'" has no doc-block at all', ErrorableObject::NOTICE_WARNING);
-            return null;
-        }
-
-        if (empty((string)$docBlockParameter->getType())) {
-            $this->generator->notice('Param "'.$pathParameter->getName().'" of "'
-                .$location
-                .'" has doc-block, but type is not defined', ErrorableObject::NOTICE_ERROR);
-            return null;
-        }
-
-        if ($pathParameter->isOptional()) {
-            if (($default_value_constant = $pathParameter->getDefaultValueConstantName()) === null)
-                $is_nullable_parameter = true;
-            else {
-                // if looks like static::* or self::*
-                if (preg_match('~^(self|static)\:\:([a-zA-Z_0-9]+)$~', $default_value_constant, $default_value_constant_parts)) {
-                    $defaultValue = constant($pathParameter->getDeclaringClass()->getName().'::'.$default_value_constant_parts[2]);
-                } else if (defined($default_value_constant)) {
-                    $defaultValue = constant($default_value_constant);
-                } else {
-                    $this->generator->notice('Param "'.$pathParameter->getName().'" of "'
-                        .$pathParameter->getDeclaringClass()->getName().'::'.$pathParameter->getDeclaringFunction()->getName()
-                        .'" has unexpected default value: "'.$default_value_constant.'"', ErrorableObject::NOTICE_INFO);
-                }
-
-            }
-        } else
-            $is_required_parameter = true;
-
+        $query_type = 'query';
+        $location = $action_reflection->class.'::'.$action_reflection->name;
 
         if ($docBlockParameter !== null && $docBlockParameter->getDescription()) {
             $description = (string)$docBlockParameter->getDescription();
@@ -617,18 +609,77 @@ class PathDescriber
             }
         }
 
-        if (!isset($description) || empty($description)) {
-            $description = ($this->commonParametersDescription[$pathParameter->getName()] ?? '');
+        if($pathParameter != null){
+
+            if ($pathParameter->isOptional()) {
+                if (($default_value_constant = $pathParameter->getDefaultValueConstantName()) === null)
+                    $is_nullable_parameter = true;
+                else {
+                    // if looks like static::* or self::*
+                    if (preg_match('~^(self|static)\:\:([a-zA-Z_0-9]+)$~', $default_value_constant, $default_value_constant_parts)) {
+                        $defaultValue = constant($pathParameter->getDeclaringClass()->getName().'::'.$default_value_constant_parts[2]);
+                    } else if (defined($default_value_constant)) {
+                        $defaultValue = constant($default_value_constant);
+                    } else {
+                        $this->generator->notice('Param "'.$pathParameter->getName().'" of "'
+                            .$pathParameter->getDeclaringClass()->getName().'::'.$pathParameter->getDeclaringFunction()->getName()
+                            .'" has unexpected default value: "'.$default_value_constant.'"', ErrorableObject::NOTICE_INFO);
+                    }
+
+                }
+            } else {
+                $is_required_parameter = true;
+            }
+
+            if (!isset($description) || empty($description)) {
+                $description = ($this->commonParametersDescription[$pathParameter->getName()] ?? '');
+            }
+        }
+
+        // Если параметр id значит ставим path
+        if ($docBlockParameter != null){
+            if ($docBlockParameter->getVariableName() == 'id'){
+                $is_required_parameter = true;
+                $query_type = 'path';
+            }
+            elseif (str_contains($docBlockParameter->__toString(),'null')){
+                $is_nullable_parameter = true;
+            }
+        }
+
+        if (!$is_required_parameter){
+            if ($docBlockParameter === null) {
+                //добавил проверку на тихий режим
+                if (DefaultGenerator::PARSE_PARAMETERS_SILENT_MODE){
+                    $this->generator->notice('Param "'.$pathParameter->getName().'" of "' . $location
+                        .'" has no doc-block at all', ErrorableObject::NOTICE_WARNING);
+                }
+
+                return null;
+            }
+
+            if (empty((string)$docBlockParameter->getType()) ) {
+                //добавил проверку на тихий режим
+                if (!DefaultGenerator::PARSE_PARAMETERS_SILENT_MODE){
+                    $this->generator->notice('Param "'.$pathParameter->getName().'" of "'
+                        .$location
+                        .'" has doc-block, but type is not defined', ErrorableObject::NOTICE_ERROR);
+                }
+                return null;
+            }
         }
 
         $schema = $this->generator->getTypeDescriber()->generateSchemaForType(
-            $pathParameter->getDeclaringClass()->getName(),
-            $docBlockParameter !== null ? $docBlockParameter->getType() : null,
+            $action_reflection->class,
+            $docBlockParameter !== null ? $docBlockParameter->getType() : 'integer',
             $defaultValue ?? null,
             $is_nullable_parameter, null);
 
         if ($schema === null) {
-            $this->generator->notice('Schema for '.$pathParameter->getName().' is invalid', DefaultGenerator::NOTICE_ERROR);
+            //добавил проверку на тихий режим
+            if(!DefaultGenerator::PARSE_PARAMETERS_SILENT_MODE){
+                $this->generator->notice('Schema for '.$pathParameter->getName().' is invalid', DefaultGenerator::NOTICE_ERROR);
+            }
             return null;
         }
 
@@ -651,8 +702,8 @@ class PathDescriber
         }
 
         $parameter = new Parameter([
-            'name' => $pathParameter->getName(),
-            'in' => 'query',
+            'name' => $docBlockParameter != null ? $docBlockParameter->getVariableName() : $pathParameter->getName(),
+            'in' => $query_type,
             'description' => $description,
             'schema' => $schema,
         ]);
@@ -684,7 +735,7 @@ class PathDescriber
             foreach ($docBlock->getTagsByName('param') as $action_parameter) {
                 if ($action_parameter instanceof InvalidTag) {
                     $this->generator->onInvalidTag($action_parameter,
-                       $actionReflection->getDeclaringClass()->getName().':'.$actionReflection->getName().'()'
+                        $actionReflection->getDeclaringClass()->getName().':'.$actionReflection->getName().'()'
                     );
                     continue;
                 }
@@ -764,7 +815,7 @@ class PathDescriber
     protected function generateSchemaForBodyParameter(
         ReflectionParameter $pathParameter,
         ?Param $docBlockParameter,
-        &$isRequired = false
+                            &$isRequired = false
     ): ?Property
     {
         $is_nullable_parameter = $is_required_parameter = false;
@@ -826,3 +877,4 @@ class PathDescriber
         return $schema;
     }
 }
+

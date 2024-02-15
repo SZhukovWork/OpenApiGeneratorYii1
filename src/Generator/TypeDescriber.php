@@ -201,18 +201,18 @@ class TypeDescriber
      */
     public function generateSchemaForPrimitiveType(
         ?string $typeSpecification,
-        $defaultValue,
+                $defaultValue,
         bool $isIterable): Schema
     {
         $type = $this->canonizePrimitiveType($typeSpecification, $additionalTypeProperties);
 
         if ($isIterable) {
             $schema = new Schema([
-                                     'type' => 'array',
-                                     'items' => new Items([
-                                                              'type' => $type,
-                                                          ] + $additionalTypeProperties)
-                                 ]);
+                'type' => 'array',
+                'items' => new Items([
+                        'type' => $type,
+                    ] + $additionalTypeProperties)
+            ]);
 
             if (is_array($defaultValue) && !empty($defaultValue)) {
                 $schema->enum = $defaultValue;
@@ -220,11 +220,9 @@ class TypeDescriber
 
         } else {
             $schema = new Schema([
-                                     'type' => $type,
-                                 ] + $additionalTypeProperties);
-            if (!empty($defaultValue)) {
-                $schema->default = $defaultValue;
-            }
+                    'type' => $type,
+                ] + $additionalTypeProperties);
+            $schema->default = $defaultValue;
         }
 
         return $schema;
@@ -244,9 +242,9 @@ class TypeDescriber
         $schema = $this->generator->getClassDescriber()->generateSchemaForClass($typeSpecification);
         if ($isIterable) {
             $schema = new Schema([
-                                     'type' => 'array',
-                                     'items' => $schema,
-                                 ]);
+                'type' => 'array',
+                'items' => $schema,
+            ]);
         }
         return $schema;
     }
@@ -265,9 +263,9 @@ class TypeDescriber
         $schema = $this->generator->getClassDescriber()->generateSchemaForObject($object);
         if ($isIterable) {
             $schema = new Schema([
-                                     'type' => 'array',
-                                     'items' => $schema,
-                                 ]);
+                'type' => 'array',
+                'items' => $schema,
+            ]);
         }
         return $schema;
     }
@@ -402,24 +400,24 @@ class TypeDescriber
         // an array
         if ($typeSpecification === 'array') {
             $schema = new Schema([
-                                     'type' => 'array',
-                                     'items' => new Items([
-                                                              'type' => 'object',
-                                                          ]),
-                                 ]);
+                'type' => 'array',
+                'items' => new Items([
+                    'type' => 'object',
+                ]),
+            ]);
         }
         // an object
         else if (in_array($typeSpecification, ['stdclass', 'object', 'mixed'], true)) {
             $schema = new Schema([
-                                     'type' => 'object',
-                                 ]);
+                'type' => 'object',
+            ]);
         }
 
         if ($isIterableType) {
             $schema = new Schema([
-                                     'type' => 'array',
-                                     'items' => $schema,
-                                 ]);
+                'type' => 'array',
+                'items' => $schema,
+            ]);
         }
 
         return $schema;
@@ -455,7 +453,7 @@ class TypeDescriber
     protected function generateSchemaForFewTypes(
         string $typeSpecification,
         string $declaringClass,
-        $defaultValue,
+               $defaultValue,
         bool &$isNullableType,
         ?string $schemaType,
         &$kindOfType = null)
@@ -502,13 +500,13 @@ class TypeDescriber
 //                            ]);
                 default:
                     return new $schemaType([
-                                               'oneOf' => $sub_type_schemas,
-                                           ]);
+                        'oneOf' => $sub_type_schemas,
+                    ]);
             }
         } else {
             return new Schema([
-                                  'oneOf' => $sub_type_schemas,
-                              ]);
+                'oneOf' => $sub_type_schemas,
+            ]);
         }
     }
 }

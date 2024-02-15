@@ -11,41 +11,52 @@ use wapmorgan\OpenApiGenerator\ScraperSkeleton;
 use Yii;
 use yii\web\Controller;
 
-class Yii2CodeScraper extends ScraperSkeleton
+class Yii1CodeScraper extends ScraperSkeleton
 {
     public bool $scrapeApplication = true;
-    public string $applicationSpecification = 'app';
+    public string $applicationSpecification = 'api';
+    public string $specificationTitle;
+    public string $specificationVersion = '1.0';
+    public string $specificationDescription = 'API version 1.0';
+
     public bool $scrapeModules = true;
     public bool $scanControllerInlineActions = true;
     public bool $scanControllerExternalActions = true;
     /** @var array<string>string[] Pairs of string-string to be replaced from module folder name and module path in URL */
     public array $replacesForModulePath = [];
 
-    protected string $controllerInApplicationClassPattern = '~^app\\\\controllers\\\\controllers\\\\(?<controller>[a-z0-9_]+)Controller$~i';
+    public array $servers = [];
+    //изменил под нашу архетиктуру
+    protected string $controllerInApplicationClassPattern = '~(?<controller>[a-z0-9_]+)Controller~i';
     public string $controllerInModuleClassPattern =
-        '~^app\\\\modules\\\\(?<moduleId>[a-z0-9_]+)\\\\controllers\\\\(?<controller>[a-z0-9_]+)Controller$~i';
+        '~modules/(?<moduleId>[a-z0-9_]+)/controllers/(?<controller>[a-z0-9_]+)Controller~i';
     public string $actionAsControllerMethodPattern = '~^action(?<action>[A-Z][a-z0-9_]+)$~i';
+
+    public function __construct(string $projectTitle)
+    {
+        $this->specificationTitle = $projectTitle;
+    }
 
     /**
      * @inheritDoc
      * @throws \ReflectionException
      */
-    public function scrape(string $folder): array
+    public function scrape(string $directory): array
     {
         if (!class_exists('\\Yii', false)) {
-            $this->initializeYiiAutoloader($folder);
+            $this->initializeYiiAutoloader();
         }
-        $directory = Yii::getAlias('@app');
 
+        //Собираем контролерры и количество действий в них
         list($total_actions, $controllers) = $this->collectActions($directory);
         $this->notice('Retrieved '
-                      . count(array_keys($controllers))
-                      . ' module(s) with ' . $total_actions . ' action(s)', self::NOTICE_IMPORTANT);
+            . count(array_keys($controllers))
+            . ' module(s) with ' . $total_actions . ' action(s)', self::NOTICE_IMPORTANT);
         ksort($controllers, SORT_NATURAL);
 
         $default_wrapper = $this->getDefaultResponseWrapper();
         $result = [];
-
+        //Начинаем проходить по контроллерам для создания эндпоинтов
         foreach ($controllers as $module_id => $module_controllers) {
             $module_class = $this->getModuleClass($module_id);
             if ($module_class !== null) {
@@ -58,13 +69,13 @@ class Yii2CodeScraper extends ScraperSkeleton
 
             $specification = $this->newSpecification(
                 $module_id,
-                 $module_alias ?? $module_id,
-                 $module_description ?? null,
+                $module_alias ?? $module_id,
+                $module_description ?? null,
                 $module_docs ?? null);
 
             foreach ($module_controllers as $controller_class => $controller_configuration) {
                 $controller_reflection = ReflectionsCollection::getClass($controller_class);
-
+                //Получаем инфу о контроллере
                 $controller_doc = $controller_reflection->getDocComment();
                 $controller_title = $this->getDocParameter($controller_doc, 'title', '');
                 $controller_description = $this->getMultiLineDocParameter($controller_doc, 'description', '');
@@ -77,11 +88,13 @@ class Yii2CodeScraper extends ScraperSkeleton
                     'description' => $controller_description,
                     'externalDocs' => $controller_docs,
                 ]);
-
+                //Проходимся по действиям внутри контроллера
                 foreach ($controller_configuration['actions'] as $controller_action_id => $controller_action_method) {
                     try {
                         $path = new Endpoint();
+                        //добавил приписывание модуля к адресу
                         $path->id =
+                            '/' . $module_id .
                             ($controller_configuration['controllerId'] !== 'default'
                                 ? '/' . $controller_configuration['controllerId']
                                 : null) // hide default controller path
@@ -124,11 +137,11 @@ class Yii2CodeScraper extends ScraperSkeleton
                         $specification->endpoints[] = $path;
                     } catch (\Exception $e) {
                         $this->error('Error during working on '.($controller_configuration['controllerId'] !== 'default'
-                                       ? '/' . $controller_configuration['controllerId']
-                                       : null) // hide default controller path
-                                   . '/' . $controller_action_id.PHP_EOL
-                                   .$e->getMessage().' in '.$e->getFile().':'.$e->getLine()
-                                   .$e->getTraceAsString());
+                                ? '/' . $controller_configuration['controllerId']
+                                : null) // hide default controller path
+                            . '/' . $controller_action_id.PHP_EOL
+                            .$e->getMessage().' in '.$e->getFile().':'.$e->getLine()
+                            .$e->getTraceAsString());
                     }
                 }
             }
@@ -154,13 +167,12 @@ class Yii2CodeScraper extends ScraperSkeleton
                 $before_classes_list = get_declared_classes();
                 require_once $php_file;
                 $added_classes = array_diff(get_declared_classes(), $before_classes_list);
-
                 foreach ($added_classes as $added_class) {
                     if (preg_match($this->controllerInModuleClassPattern, $added_class, $matches)) {
                         $module_id = strtr($matches['moduleId'], $this->replacesForModulePath);
                         if (!$this->checkModule($module_id)) {
                             $this->notice('Skipping '.$module_id.' because of check',
-                                          self::NOTICE_INFO);
+                                self::NOTICE_INFO);
                             continue;
                         }
 
@@ -192,6 +204,7 @@ class Yii2CodeScraper extends ScraperSkeleton
                         );
                     }
                 }
+                $added_classes = null;
             }
         }
 
@@ -229,10 +242,10 @@ class Yii2CodeScraper extends ScraperSkeleton
     /**
      * @param $rootDirectory
      */
-    protected function initializeYiiAutoloader($rootDirectory)
+    protected function initializeYiiAutoloader()
     {
-        require_once $rootDirectory.'/vendor/yiisoft/yii2/Yii.php';
-        Yii::setAlias('@app', $rootDirectory);
+        //Изменения из-за разницы в Yii
+        require_once realpath('protected/yiic.php');
     }
 
     /**
@@ -250,17 +263,17 @@ class Yii2CodeScraper extends ScraperSkeleton
     ): Specification
     {
         $specification = new Specification();
-        $specification->title = sprintf(static::$specificationTitle, $moduleId);
-        $specification->version = $moduleId;
-        $specification->description = $moduleDescription ?? sprintf(static::$specificationDescription, $moduleId);
+        $specification->title = sprintf($this->specificationTitle, $moduleId);
+        $specification->version = sprintf($this->specificationVersion, $moduleId);
+        $specification->description = $moduleDescription ?? sprintf($this->specificationDescription, $moduleId);
         $specification->externalDocs = $moduleDocs;
 
         $modulePath = trim($modulePath, '/\\');
 
         foreach ($this->getServers() as $server_url => $server_description) {
             $specification->servers[] = new Server([
-               'url' => $server_url . (!empty($modulePath) ? $modulePath . '/' : null),
-               'description' => $server_description,
+                'url' => $server_url . (!empty($modulePath) ? $modulePath . '/' : null),
+                'description' => $server_description,
             ]);
         }
 
@@ -354,7 +367,7 @@ class Yii2CodeScraper extends ScraperSkeleton
                     . ' has no doc-block at all',
                     self::NOTICE_WARNING
                 );
-                continue;
+//                continue;
             }
 
             $actions[$action_uri] = $method_reflection->getName();
@@ -369,8 +382,11 @@ class Yii2CodeScraper extends ScraperSkeleton
      */
     protected function appendControllerExternalActions(\ReflectionClass $classReflection, array &$actions)
     {
-        if ($classReflection->isSubclassOf(Controller::class)) {
-            $external_actions = $classReflection->newInstanceWithoutConstructor()->actions();
+        if ($classReflection->isSubclassOf(\CController::class)) {
+            //Добавил игнорирование абстрактных классов
+            if(!$classReflection->isAbstract()){
+                $external_actions = $classReflection->newInstanceWithoutConstructor()->actions();
+            }
 
             if (is_array($external_actions) && is_array($external_actions)) {
                 foreach ($external_actions as $external_action_uri => $external_action_config) {
@@ -415,7 +431,7 @@ class Yii2CodeScraper extends ScraperSkeleton
     protected function getModuleClass(string $moduleId): ?string
     {
         $moduleId = strtr($moduleId, array_flip($this->replacesForModulePath));
-        $namespace_prefix = '\\app\\modules\\';
+        $namespace_prefix = '\\App\\modules\\';
         $class_name = $moduleId;
         if (substr($class_name, 0, 1) !== 'v') {
             $class_name = ucfirst($class_name);
@@ -442,7 +458,7 @@ class Yii2CodeScraper extends ScraperSkeleton
      */
     protected function parseActionInController(
         string $controllerClass,
-        $controllerActionMethod,
+               $controllerActionMethod,
         Endpoint $path
     ): ReflectionMethod {
         if (is_string($controllerActionMethod)) {

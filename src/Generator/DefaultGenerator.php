@@ -31,6 +31,8 @@ class DefaultGenerator extends ErrorableObject
     public const TREAT_EXTRACTED_ARGUMENTS_AS_BODY = 5;
     public const PARSE_PARAMETERS_FROM_ENDPOINT = 3;
     public const PARSE_PARAMETERS_FORMAT_DESCRIPTION = 4;
+    // Если выключить тихий режим, то при парсе больших ДТО и других комплексных объектов будут ошибки из-за getName
+    public const PARSE_PARAMETERS_SILENT_MODE = 6;
 
     protected $settings = [
         self::CHANGE_GET_TO_POST_FOR_COMPLEX_PARAMETERS => false,
@@ -38,6 +40,7 @@ class DefaultGenerator extends ErrorableObject
         self::TREAT_EXTRACTED_ARGUMENTS_AS_BODY => false,
         self::PARSE_PARAMETERS_FROM_ENDPOINT => false,
         self::PARSE_PARAMETERS_FORMAT_DESCRIPTION => false,
+        self::PARSE_PARAMETERS_SILENT_MODE => true,
     ];
 
     /**
@@ -135,7 +138,9 @@ class DefaultGenerator extends ErrorableObject
         $this->pathDescriber->setCustomFormats($scraper->getCustomFormats());
         $this->classDescriber->setClassDescribingOptions($scraper->getClassDescribingOptions());
 
-        // get information about endpoints
+        // получаем инфу по эндпоинтам
+        // P.S. из-за разницы в версии Yii программа будет вызывать функцию exit послу scrape, пытаюсь это пофиксить,
+        // пока что решается $exit = false в CApplication public function end
         $scrape_result = $scraper->scrape($sourceFolder);
 
         $this->call($this->onStartCallback, [$scrape_result]);
@@ -339,12 +344,12 @@ class DefaultGenerator extends ErrorableObject
             switch (get_class($securityScheme)) {
                 case ApiKeySecurityScheme::class:
                     $openapi->components->securitySchemes[] = new SecurityScheme([
-                         'securityScheme' => $securityScheme->id,
-                         'type' => $securityScheme->type,
-                         'description' => $securityScheme->description,
-                         'name' => $securityScheme->name,
-                         'in' => $securityScheme->in,
-                     ]);
+                        'securityScheme' => $securityScheme->id,
+                        'type' => $securityScheme->type,
+                        'description' => $securityScheme->description,
+                        'name' => $securityScheme->name,
+                        'in' => $securityScheme->in,
+                    ]);
                     break;
 
                 case HttpSecurityScheme::class:
@@ -353,9 +358,9 @@ class DefaultGenerator extends ErrorableObject
                         'type' => $securityScheme->type,
                         'scheme' => $securityScheme->scheme,
                         'bearerFormat' => $securityScheme->bearerFormat !== null
-                             ? $securityScheme->bearerFormat
-                             : \OpenApi\UNDEFINED,
-                     ]);
+                            ? $securityScheme->bearerFormat
+                            : \OpenApi\UNDEFINED,
+                    ]);
                     break;
 
                 case OAuth2SecurityScheme::class:
@@ -364,7 +369,7 @@ class DefaultGenerator extends ErrorableObject
                         'securityScheme' => $securityScheme->id,
                         'description' => $securityScheme->description,
                         'flows' => $securityScheme->flows,
-                     ]);
+                    ]);
                     break;
 
                 case OpenIdConnectSecurityScheme::class:
@@ -372,7 +377,7 @@ class DefaultGenerator extends ErrorableObject
                         'type' => 'openIdConnect',
                         'securityScheme' => $securityScheme->id,
                         'openIdConnectUrl' => $securityScheme->openIdConnectUrl,
-                     ]);
+                    ]);
                     break;
             }
 
@@ -433,8 +438,26 @@ class DefaultGenerator extends ErrorableObject
             $this->notice('Path '.$resultPath->id.' has no doc at all', self::NOTICE_WARNING);
             $doc_block = null;
         } else {
+            //Начинаем генерить документацию из phpdoc
             $doc_block = $this->docBlockFactory->create($path_doc);
+            $doc_tags = $doc_block->getTags();
+            if($doc_tags != null){
+                //Добавил смену метода с GET на POST если указан и при наличии param $id он ставится как часть адреса
+                foreach ($doc_tags as $doc_tag){
+                    if ($doc_tag->getName() == 'method' and str_contains($doc_tag,'POST')) {
+                        $this->notice('Http method of ' . $resultPath->id . ' changed from "' . $resultPath->httpMethod . '" to "post" because of request body', self::NOTICE_INFO);
+                        $resultPath->httpMethod = 'POST';
+                    }
+                    elseif ($doc_tag->getName() == 'param' and str_contains($doc_tag,'$id') ){
+                        $resultPath->id .= "/{id}";
+                        $path->path .= "/{id}";
+                    }
+
+                }
+
+            }
         }
+
 
         if ($this->settings[self::TREAT_COMPLEX_ARGUMENTS_AS_BODY]) {
             $path_request_body = $this->pathDescriber->generatePathOperationBody(
@@ -552,7 +575,7 @@ class DefaultGenerator extends ErrorableObject
     public function onInvalidTag(InvalidTag $tag, $location = null)
     {
         $this->notice('Tag "@' . $tag->getName() . '"' . (!empty($location) ? ' of "'.$location.'"' : null)
-                      . ' is invalid: '.$tag->getException()->getMessage(),
-         ErrorableObject::NOTICE_ERROR);
+            . ' is invalid: '.$tag->getException()->getMessage(),
+            ErrorableObject::NOTICE_ERROR);
     }
 }

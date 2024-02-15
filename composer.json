@@ -10,13 +10,11 @@
             "role": "developer"
         }
     ],
-    "bin": ["bin/openapi-generator"],
     "require": {
         "php": ">=7.4",
         "zircote/swagger-php": "^3.0",
         "doctrine/annotations": "^1.6",
-        "phpdocumentor/reflection-docblock": "^4.3|^5.1",
-        "symfony/console": "^5.0|^6.0"
+        "phpdocumentor/reflection-docblock": "^4.3|^5.1"
     },
     "config": {
         "platform": {

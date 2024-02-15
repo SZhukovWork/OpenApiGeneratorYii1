@@ -2,11 +2,8 @@
 namespace wapmorgan\OpenApiGenerator;
 
 use wapmorgan\OpenApiGenerator\Generator\ClassDescriber;
-use wapmorgan\OpenApiGenerator\Integration\LaravelCodeScraper;
-use wapmorgan\OpenApiGenerator\Integration\SlimCodeScraper;
-use wapmorgan\OpenApiGenerator\Integration\Yii2CodeScraper;
+use wapmorgan\OpenApiGenerator\Integration\Yii1CodeScraper;
 use wapmorgan\OpenApiGenerator\Scraper\PathResultWrapper;
-use wapmorgan\OpenApiGenerator\Scraper\Result;
 use wapmorgan\OpenApiGenerator\Scraper\SecurityScheme\ApiKeySecurityScheme;
 use wapmorgan\OpenApiGenerator\Scraper\Specification;
 
@@ -15,9 +12,9 @@ abstract class ScraperSkeleton extends ErrorableObject
     public $specificationPattern = '.+';
     public $specificationAntiPattern = false;
 
-    public static string $specificationTitle = 'API';
-    public static string $specificationDescription = 'API version %s';
-    public static string $specificationVersion = 'api';
+    public string $specificationTitle = 'API';
+    public string $specificationDescription = 'API version %s';
+    public string $specificationVersion = 'api';
 
     public array $servers = [
         'http://localhost:8080/' => 'Local server',
@@ -147,9 +144,7 @@ abstract class ScraperSkeleton extends ErrorableObject
     public static function getAllDefaultScrapers(): array
     {
         return [
-            'yii2' => Yii2CodeScraper::class,
-            'slim' => SlimCodeScraper::class,
-            'laravel' => LaravelCodeScraper::class,
+            'yii' => Yii1CodeScraper::class,
         ];
     }
 

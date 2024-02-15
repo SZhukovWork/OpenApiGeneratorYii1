@@ -87,7 +87,7 @@ class ClassDescriber
                 $properties = $reflection->getDefaultProperties();
 
                 $this->generator->trace('Redirection from '.$describable_class->getName().' to $'.$redirection
-                                        .' ('.$properties[$redirection].($is_iterable ? '[]' : null).')');
+                    .' ('.$properties[$redirection].($is_iterable ? '[]' : null).')');
 
                 return $this->generator->getTypeDescriber()->generateSchemaForType(
                     $describable_class->getName(),
@@ -150,7 +150,7 @@ class ClassDescriber
                 }
 
                 $this->generator->trace('Redirection from '.$describable_class->getName().' to $'.$redirection
-                                        .' ('.var_export($object->{$redirection}, true).')');
+                    .' ('.var_export($object->{$redirection}, true).')');
 
                 return $this->generator->getTypeDescriber()->generateSchemaForObject($object->{$redirection}, $is_iterable);
             } elseif (class_exists($redirection)) {
@@ -187,10 +187,12 @@ class ClassDescriber
             'type' => 'object',
         ]);
         $required_fields = [];
+        $defaultProperties = $reflectionClass->getDefaultProperties();
         $properties = $this->generateAnnotationsForClassProperties(
             $reflectionClass->getName(),
             $describableClass->getName(),
             $object,
+            $defaultProperties,
             $required_fields);
 
         if (!empty($required_fields)) {
@@ -219,7 +221,7 @@ class ClassDescriber
     protected function generateAnnotationForObjectVirtualProperty(
         PropertyDocBlock $propertyTag,
         string $declaringClass,
-        &$isNullable = false,
+                         &$isNullable = false,
         ?object $object = null
     ): PropertyAnnotation
     {
@@ -295,14 +297,14 @@ class ClassDescriber
      * @return PropertyAnnotation
      * @throws \ReflectionException
      */
-    protected function generateAnnotationForObjectProperty(ReflectionProperty $propertyReflection): PropertyAnnotation
+    protected function generateAnnotationForObjectProperty(ReflectionProperty $propertyReflection, $defaultProperties): PropertyAnnotation
     {
         $doc_comment = $propertyReflection->getDocComment();
         $this->generator->trace('Discovering property '.$propertyReflection->getDeclaringClass()->getName().':'.$propertyReflection->getName());
         if ($doc_comment === false) {
             $this->generator->notice('Property "'.$propertyReflection->getName().'" of "'
-                                     .$propertyReflection->getDeclaringClass()->getName().'" has no doc-block at all',
-                                     ErrorableObject::NOTICE_WARNING);
+                .$propertyReflection->getDeclaringClass()->getName().'" has no doc-block at all',
+                ErrorableObject::NOTICE_WARNING);
         } else {
             $doc = $this->generator->getDocBlockFactory()->create($doc_comment);
             if ($doc->hasTag('var')) {
@@ -314,8 +316,8 @@ class ClassDescriber
                 }
             } else {
                 $this->generator->notice('Property "' . $propertyReflection->getName() . '" of "'
-                                         . $propertyReflection->getDeclaringClass()->getName() . '" has no @var tag',
-                                         ErrorableObject::NOTICE_ERROR);
+                    . $propertyReflection->getDeclaringClass()->getName() . '" has no @var tag',
+                    ErrorableObject::NOTICE_ERROR);
                 unset($doc);
             }
         }
@@ -328,13 +330,25 @@ class ClassDescriber
             $type = (string)$propertyReflection->getType();
         }
 
+
+
         if (!empty($type)) {
             $isNullable = false;
+            foreach ($defaultProperties as $default_key => $default_value){
+                if ($default_key == $propertyReflection->getName()){
+                    if($default_value == null){
+                        $isNullable = true;
+                    }
+                    break;
+                }
+                $default_value = null;
+            }
+
             /** @var PropertyAnnotation $property */
             $property = $this->generator->getTypeDescriber()->generateSchemaForType(
                 $propertyReflection->getDeclaringClass()->getName(),
                 $type,
-                null,
+                $default_value,
                 $isNullable,
                 PropertyAnnotation::class);
         } else {
@@ -391,6 +405,7 @@ class ClassDescriber
         string $class,
         string $describableClass,
         ?object $object = null,
+        array $defaultProperties,
         array &$requiredFields = []
     ): array
     {
@@ -418,8 +433,8 @@ class ClassDescriber
 
                         if (empty((string)$object_field->getType())) {
                             $this->generator->notice('Property "' . $object_field->getVariableName() . '" of "'
-                                                     . $class . '" has doc-block, but type is not defined',
-                                                     ErrorableObject::NOTICE_ERROR);
+                                . $class . '" has doc-block, but type is not defined',
+                                ErrorableObject::NOTICE_ERROR);
                             continue;
                         }
 
@@ -497,7 +512,7 @@ class ClassDescriber
         // explicit fields
         if (isset($describing_rules[self::CLASS_PUBLIC_PROPERTIES]) && $describing_rules[self::CLASS_PUBLIC_PROPERTIES]) {
             foreach (ReflectionsCollection::getClass($class)->getProperties(ReflectionProperty::IS_PUBLIC) as $propertyReflection) {
-                $properties[$propertyReflection->getName()] = $this->generateAnnotationForObjectProperty($propertyReflection);
+                $properties[$propertyReflection->getName()] = $this->generateAnnotationForObjectProperty($propertyReflection, $defaultProperties);
                 $requiredFields[] = $propertyReflection->getName();
             }
         }
