@@ -1,7 +1,7 @@
 <?php
-namespace wapmorgan\OpenApiGenerator\Scraper;
+namespace szhukovwork\OpenApiGenerator\Scraper;
 
-use wapmorgan\OpenApiGenerator\InitableObject;
+use szhukovwork\OpenApiGenerator\InitableObject;
 
 class Tag extends InitableObject
 {

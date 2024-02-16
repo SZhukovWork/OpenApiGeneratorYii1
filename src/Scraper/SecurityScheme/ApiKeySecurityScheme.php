@@ -1,7 +1,7 @@
 <?php
-namespace wapmorgan\OpenApiGenerator\Scraper\SecurityScheme;
+namespace szhukovwork\OpenApiGenerator\Scraper\SecurityScheme;
 
-use wapmorgan\OpenApiGenerator\InitableObject;
+use szhukovwork\OpenApiGenerator\InitableObject;
 
 class ApiKeySecurityScheme extends InitableObject
 {

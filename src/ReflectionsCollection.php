@@ -1,5 +1,5 @@
 <?php
-namespace wapmorgan\OpenApiGenerator;
+namespace szhukovwork\OpenApiGenerator;
 
 use ReflectionClass;
 use ReflectionMethod;

@@ -1,5 +1,5 @@
 <?php
-namespace wapmorgan\OpenApiGenerator\Generator;
+namespace szhukovwork\OpenApiGenerator\Generator;
 
 use Exception;
 use OpenApi\Annotations\Components;
@@ -14,15 +14,15 @@ use OpenApi\Annotations\Tag;
 use phpDocumentor\Reflection\DocBlock\Tags\InvalidTag;
 use phpDocumentor\Reflection\DocBlockFactory;
 use ReflectionException;
-use wapmorgan\OpenApiGenerator\ErrorableObject;
-use wapmorgan\OpenApiGenerator\ReflectionsCollection;
-use wapmorgan\OpenApiGenerator\Scraper\Endpoint;
-use wapmorgan\OpenApiGenerator\Scraper\SecurityScheme\ApiKeySecurityScheme;
-use wapmorgan\OpenApiGenerator\Scraper\SecurityScheme\HttpSecurityScheme;
-use wapmorgan\OpenApiGenerator\Scraper\SecurityScheme\OAuth2SecurityScheme;
-use wapmorgan\OpenApiGenerator\Scraper\SecurityScheme\OpenIdConnectSecurityScheme;
-use wapmorgan\OpenApiGenerator\Scraper\Specification;
-use wapmorgan\OpenApiGenerator\ScraperSkeleton;
+use szhukovwork\OpenApiGenerator\ErrorableObject;
+use szhukovwork\OpenApiGenerator\ReflectionsCollection;
+use szhukovwork\OpenApiGenerator\Scraper\Endpoint;
+use szhukovwork\OpenApiGenerator\Scraper\SecurityScheme\ApiKeySecurityScheme;
+use szhukovwork\OpenApiGenerator\Scraper\SecurityScheme\HttpSecurityScheme;
+use szhukovwork\OpenApiGenerator\Scraper\SecurityScheme\OAuth2SecurityScheme;
+use szhukovwork\OpenApiGenerator\Scraper\SecurityScheme\OpenIdConnectSecurityScheme;
+use szhukovwork\OpenApiGenerator\Scraper\Specification;
+use szhukovwork\OpenApiGenerator\ScraperSkeleton;
 
 class DefaultGenerator extends ErrorableObject
 {
@@ -125,7 +125,7 @@ class DefaultGenerator extends ErrorableObject
     }
 
     /**
-     * @param \wapmorgan\OpenApiGenerator\ScraperSkeleton $scraper
+     * @param \szhukovwork\OpenApiGenerator\ScraperSkeleton $scraper
      * @return GeneratorResultSpecification[]
      * @throws \ReflectionException
      */
@@ -296,7 +296,7 @@ class DefaultGenerator extends ErrorableObject
     }
 
     /**
-     * @param \wapmorgan\OpenApiGenerator\Scraper\Specification $specification
+     * @param \szhukovwork\OpenApiGenerator\Scraper\Specification $specification
      * @return OpenApi
      * @throws ReflectionException
      */

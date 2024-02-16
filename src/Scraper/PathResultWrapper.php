@@ -1,9 +1,9 @@
 <?php
-namespace wapmorgan\OpenApiGenerator\Scraper;
+namespace szhukovwork\OpenApiGenerator\Scraper;
 
 use OpenApi\Annotations\Property;
 use OpenApi\Annotations\Schema;
-use wapmorgan\OpenApiGenerator\InitableObject;
+use szhukovwork\OpenApiGenerator\InitableObject;
 
 class PathResultWrapper extends InitableObject
 {

@@ -1,11 +1,11 @@
 <?php
-namespace wapmorgan\OpenApiGenerator;
+namespace szhukovwork\OpenApiGenerator;
 
-use wapmorgan\OpenApiGenerator\Generator\ClassDescriber;
-use wapmorgan\OpenApiGenerator\Integration\Yii1CodeScraper;
-use wapmorgan\OpenApiGenerator\Scraper\PathResultWrapper;
-use wapmorgan\OpenApiGenerator\Scraper\SecurityScheme\ApiKeySecurityScheme;
-use wapmorgan\OpenApiGenerator\Scraper\Specification;
+use szhukovwork\OpenApiGenerator\Generator\ClassDescriber;
+use szhukovwork\OpenApiGenerator\Integration\Yii1CodeScraper;
+use szhukovwork\OpenApiGenerator\Scraper\PathResultWrapper;
+use szhukovwork\OpenApiGenerator\Scraper\SecurityScheme\ApiKeySecurityScheme;
+use szhukovwork\OpenApiGenerator\Scraper\Specification;
 
 abstract class ScraperSkeleton extends ErrorableObject
 {

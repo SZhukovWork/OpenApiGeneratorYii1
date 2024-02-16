@@ -1,9 +1,9 @@
 # What is it?
 It is OpenApi configuration generator that works with origin source code.
 
-[![Latest Stable Version](https://poser.pugx.org/wapmorgan/openapi-generator/v/stable)](https://packagist.org/packages/wapmorgan/openapi-generator)
-[![Latest Unstable Version](https://poser.pugx.org/wapmorgan/openapi-generator/v/unstable)](https://packagist.org/packages/wapmorgan/openapi-generator)
-[![License](https://poser.pugx.org/wapmorgan/openapi-generator/license)](https://packagist.org/packages/wapmorgan/openapi-generator)
+[![Latest Stable Version](https://poser.pugx.org/szhukovwork/openapi-generator/v/stable)](https://packagist.org/packages/szhukovwork/openapi-generator)
+[![Latest Unstable Version](https://poser.pugx.org/szhukovwork/openapi-generator/v/unstable)](https://packagist.org/packages/szhukovwork/openapi-generator)
+[![License](https://poser.pugx.org/szhukovwork/openapi-generator/license)](https://packagist.org/packages/szhukovwork/openapi-generator)
 
 Main purpose of this library is to automatize generation of OpenApi-specification for existing **JSON-API** with a lot of methods. Idea by [@maxonrock](https://github.com/maxonrock).
 
